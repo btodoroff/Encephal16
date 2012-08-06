@@ -49,6 +49,8 @@ namespace e16
         private ushort _EX;
         private ushort _IA;
         private uint _Cycles;
+        private bool _IntEnabled;
+        private System.Collections.Generic.Queue<ushort> _IntQueue;
 
         public uint Cycles { get { return _Cycles; } }
 
@@ -56,6 +58,7 @@ namespace e16
         {
             _RAM = new ushort[RAMSize];
             _Register = new ushort[RegisterCount];
+            _IntQueue = new Queue<ushort>();
             ClearMemory();
             Reset();
 
@@ -124,6 +127,8 @@ namespace e16
             _EX = 0;
             _IA = 0;
             _Cycles = 0;
+            _IntEnabled = true;
+            _IntQueue.Clear();
             ClearMemory();
         }
 
@@ -158,6 +163,14 @@ namespace e16
         public void Tick()
         {
             _Cycles++;
+            if (_IntEnabled && _IntQueue.Count > 0)
+            {
+                stackPUSH(_PC);
+                stackPUSH(_A);
+                _PC = _IA;
+                _Register[_A] = _IntQueue.Dequeue();
+                _IntEnabled = false;
+            }
             ushort inst = nextWord();
             ushort opcode = (ushort)(inst & (ushort)0x001fu);
             ushort b = (ushort)((inst & (ushort)0x03e0u) >> 5);
@@ -170,6 +183,30 @@ namespace e16
                     case 0x01:
                         opJSR(opA);
                         break;
+                    case 0x08:
+                        opINT(opA);
+                        break;
+                    case 0x09:
+                        opIAG(opA);
+                        break;
+                    case 0x0a:
+                        opIAS(opA);
+                        break;
+                    case 0x0b:
+                        opRFI(opA);
+                        break;
+                    case 0x0c:
+                        opIAQ(opA);
+                        break;
+                    //case 0x10:
+                    //    opHWN(opA);
+                    //    break;
+                    //case 0x11:
+                    //    opHWQ(opA);
+                    //    break;
+                    //case 0x12:
+                    //    opHWI(opA);
+                    //    break;
                 }
             }
             else // Basic opcodes
@@ -202,6 +239,9 @@ namespace e16
                     case 0x08:
                         opMOD(opB, opA);
                         break;
+                    case 0x09:
+                        opMDI(opB, opA);
+                        break;
                     case 0x0a:
                         opAND(opB, opA);
                         break;
@@ -214,11 +254,17 @@ namespace e16
                     case 0x0d:
                         opSHR(opB, opA);
                         break;
+                    case 0x0e:
+                        opASR(opB, opA);
+                        break;
                     case 0x0f:
                         opSHL(opB, opA);
                         break;
                     case 0x10:
                         opIFB(opB, opA);
+                        break;
+                    case 0x11:
+                        opIFC(opB, opA);
                         break;
                     case 0x12:
                         opIFE(opB, opA);
@@ -228,6 +274,27 @@ namespace e16
                         break;
                     case 0x14:
                         opIFG(opB, opA);
+                        break;
+                    case 0x15:
+                        opIFA(opB, opA);
+                        break;
+                    case 0x16:
+                        opIFL(opB, opA);
+                        break;
+                    case 0x17:
+                        opIFU(opB, opA);
+                        break;
+                    case 0x1a:
+                        opADX(opB, opA);
+                        break;
+                    case 0x1b:
+                        opSBX(opB, opA);
+                        break;
+                    case 0x1e:
+                        opSTI(opB, opA);
+                        break;
+                    case 0x1f:
+                        opSTD(opB, opA);
                         break;
                 }
             }
@@ -460,22 +527,21 @@ namespace e16
             }
         }
 
-
-        private void opSHL(operand b, operand a)
+        private void opMDI(operand b, operand a)
         {
-            ushort _a = readValue(a);
-            ushort _b = readValue(b);
-            writeValue(b,(ushort)(_b << _a));
-            _EX = (ushort)(((_b<<_a)>>16)&0xffff);
+            short _a = (short)readValue(a);
+            short _b = (short)readValue(b);
+            if (_a == 0)
+            {
+                writeValue(b, 0);
+            }
+            else
+            {
+                writeValue(b, (ushort)(_a % _b));
+            }
         }
 
-        private void opSHR(operand b, operand a)
-        {
-            ushort _a = readValue(a);
-            ushort _b = readValue(b);
-            writeValue(b,(ushort)(_b >> _a));
-            _EX = (ushort)(((_b<<16)>>_a)&0xffff);
-        }
+
 
         private void opAND(operand b, operand a)
         {
@@ -498,40 +564,162 @@ namespace e16
             writeValue(b,(ushort)(_b ^ _a));
         }
 
-        private void opIFE(operand b, operand a)
+        private void opSHR(operand b, operand a)
         {
             ushort _a = readValue(a);
             ushort _b = readValue(b);
-            if (_b != _a) skipNext();
+            writeValue(b, (ushort)(_b >> _a));
+            _EX = (ushort)(((_b << 16) >> _a) & 0xffff);
         }
 
-        private void opIFN(operand b, operand a)
+        private void opASR(operand b, operand a)
         {
-            ushort _a = readValue(a);
-            ushort _b = readValue(b);
-            if (_b == _a) skipNext();
+            short _a = (short)readValue(a);
+            short _b = (short)readValue(b);
+            writeValue(b, (ushort)(_b >> _a));
+            _EX = (ushort)(((_b << 16) >> _a) & 0xffff);
         }
 
-        private void opIFG(operand b, operand a)
+        private void opSHL(operand b, operand a)
         {
             ushort _a = readValue(a);
             ushort _b = readValue(b);
-            if (_b <= _a) skipNext();
+            writeValue(b,(ushort)(_b << _a));
+            _EX = (ushort)(((_b<<_a)>>16)&0xffff);
         }
 
         private void opIFB(operand b, operand a)
         {
             ushort _a = readValue(a);
             ushort _b = readValue(b);
-            if ((_b&_a)!=0) skipNext();
+            if (!((_b & _a) != 0)) skipNext();
+        }
+
+        private void opIFC(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            if (!((_b & _a) == 0)) skipNext();
+        }
+
+        private void opIFE(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            if (!(_b == _a)) skipNext();
+        }
+
+        private void opIFN(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            if (!(_b != _a)) skipNext();
+        }
+
+        private void opIFG(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            if (!(_b > _a)) skipNext();
+        }
+
+        private void opIFA(operand b, operand a)
+        {
+            short _a = (short)readValue(a);
+            short _b = (short)readValue(b);
+            if (!(_b > _a)) skipNext();
+        }
+
+        private void opIFL(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            if (!(_b < _a)) skipNext();
+        }
+
+        private void opIFU(operand b, operand a)
+        {
+            short _a = (short)readValue(a);
+            short _b = (short)readValue(b);
+            if (!(_b < _a)) skipNext();
+        }
+
+        private void opADX(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            uint v = (uint)(_b + _a + _EX);
+            writeValue(b, (ushort)(v & 0xffffu));
+            if (v > 0x0000ffffu) _EX = (ushort)0x0001u;
+        }
+
+        private void opSBX(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            uint v = (uint)(_b - _a + _EX);
+            writeValue(b, (ushort)(v & 0xffffu));
+            if (v > 0x0000ffffu) _EX = (ushort)0xffffu;
+        }
+
+        private void opSTI(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            uint v = (uint)(_b - _a + _EX);
+            writeValue(b, _a);
+            _Register[_I] = (ushort)(_Register[_I] + 0x0001u);
+            _Register[_J] = (ushort)(_Register[_J] + 0x0001u);
+        }
+
+        private void opSTD(operand b, operand a)
+        {
+            ushort _a = readValue(a);
+            ushort _b = readValue(b);
+            uint v = (uint)(_b - _a + _EX);
+            writeValue(b, _a);
+            _Register[_I] = (ushort)(_Register[_I] - 0x0001u);
+            _Register[_J] = (ushort)(_Register[_J] - 0x0001u);
         }
 
         private void opJSR(operand a)
         {
             ushort _a = readValue(a);
             stackPUSH(_PC);
-            //_RAM[--_SP] = _PC;
             _PC = _a;
+        }
+
+        private void opINT(operand a)
+        {
+            ushort _a = readValue(a);
+            if(_IA == 0) return;
+            _IntQueue.Enqueue(_a);
+        }
+
+        private void opIAG(operand a)
+        {
+            ushort _a = readValue(a);
+            writeValue(a, _IA);
+        }
+
+        private void opIAS(operand a)
+        {
+            ushort _a = readValue(a);
+            _IA = _a;
+        }
+
+        private void opRFI(operand a)
+        {
+            ushort _a = readValue(a);
+            _Register[_A] = stackPOP();
+            _PC = stackPOP();
+            _IntEnabled = true;
+        }
+
+        private void opIAQ(operand a)
+        {
+            ushort _a = readValue(a);
+            _IntEnabled = (_a == 0);
         }
 
         private void stackPUSH(ushort value)
