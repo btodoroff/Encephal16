@@ -51,6 +51,7 @@ namespace e16
         private uint _Cycles;
         private bool _IntEnabled;
         private System.Collections.Generic.Queue<ushort> _IntQueue;
+        private int _CycleDebt;
 
         public uint Cycles { get { return _Cycles; } }
 
@@ -123,12 +124,14 @@ namespace e16
         {
             for(int i=0; i<RegisterCount; _Register[i++]=0);
             _PC = 0;
-            _SP = (ushort)(RAMSize - 1);
+            _SP = 0;
             _EX = 0;
             _IA = 0;
             _Cycles = 0;
+            _CycleDebt = 0;
             _IntEnabled = true;
             _IntQueue.Clear();
+            _state = ProcessorState.newInst;
             ClearMemory();
         }
 
@@ -160,9 +163,22 @@ namespace e16
             LoadMemory(data, startAddr);
         }
 
+        private enum ProcessorState { newInst, readOpA, readOpB, executeInst };
+        private ProcessorState _state;
+        private ushort Tick_inst;
+        private ushort Tick_opcode;
+        private ushort Tick_b;
+        private ushort Tick_a;
+        private operand Tick_opA;
+        private operand Tick_opB;
         public void Tick()
         {
             _Cycles++;
+            if (--_CycleDebt == 0)
+            {
+                _CycleDebt--;
+                return;
+            }
             if (_IntEnabled && _IntQueue.Count > 0)
             {
                 stackPUSH(_PC);
@@ -171,132 +187,161 @@ namespace e16
                 _Register[_A] = _IntQueue.Dequeue();
                 _IntEnabled = false;
             }
-            ushort inst = nextWord();
-            ushort opcode = (ushort)(inst & (ushort)0x001fu);
-            ushort b = (ushort)((inst & (ushort)0x03e0u) >> 5);
-            ushort a = (ushort)((inst & (ushort)0xfc00u) >> 10);
-            if (opcode == 0) // Non-basic opcodes
+            if(_state == ProcessorState.newInst)
             {
-                operand opA = parseOperand(a);
-                switch (b)
-                {
-                    case 0x01:
-                        opJSR(opA);
-                        break;
-                    case 0x08:
-                        opINT(opA);
-                        break;
-                    case 0x09:
-                        opIAG(opA);
-                        break;
-                    case 0x0a:
-                        opIAS(opA);
-                        break;
-                    case 0x0b:
-                        opRFI(opA);
-                        break;
-                    case 0x0c:
-                        opIAQ(opA);
-                        break;
-                    //case 0x10:
-                    //    opHWN(opA);
-                    //    break;
-                    //case 0x11:
-                    //    opHWQ(opA);
-                    //    break;
-                    //case 0x12:
-                    //    opHWI(opA);
-                    //    break;
-                }
+                Tick_inst = nextWord();
+                Tick_opcode = (ushort)(Tick_inst & (ushort)0x001fu);
+                Tick_b = (ushort)((Tick_inst & (ushort)0x03e0u) >> 5);
+                Tick_a = (ushort)((Tick_inst & (ushort)0xfc00u) >> 10);
+                _state = ProcessorState.readOpA;
+                _CycleDebt = operandCycles(Tick_a);
+                if (_CycleDebt > 0) return;
             }
-            else // Basic opcodes
+            if(_state == ProcessorState.readOpA)
             {
-                operand opA = parseOperand(a);
-                operand opB = parseOperand(b);
-                switch (opcode)
+                Tick_opA = parseOperand(Tick_a);
+                if (Tick_opcode == 0) // Non-basic opcodes
                 {
-                    case 0x01:
-                        opSET(opB, opA);
-                        break;
-                    case 0x02:
-                        opADD(opB, opA);
-                        break;
-                    case 0x03:
-                        opSUB(opB, opA);
-                        break;
-                    case 0x04:
-                        opMUL(opB, opA);
-                        break;
-                    case 0x05:
-                        opMLI(opB, opA);
-                        break;
-                    case 0x06:
-                        opDIV(opB, opA);
-                        break;
-                    case 0x07:
-                        opDVI(opB, opA);
-                        break;
-                    case 0x08:
-                        opMOD(opB, opA);
-                        break;
-                    case 0x09:
-                        opMDI(opB, opA);
-                        break;
-                    case 0x0a:
-                        opAND(opB, opA);
-                        break;
-                    case 0x0b:
-                        opBOR(opB, opA);
-                        break;
-                    case 0x0c:
-                        opXOR(opB, opA);
-                        break;
-                    case 0x0d:
-                        opSHR(opB, opA);
-                        break;
-                    case 0x0e:
-                        opASR(opB, opA);
-                        break;
-                    case 0x0f:
-                        opSHL(opB, opA);
-                        break;
-                    case 0x10:
-                        opIFB(opB, opA);
-                        break;
-                    case 0x11:
-                        opIFC(opB, opA);
-                        break;
-                    case 0x12:
-                        opIFE(opB, opA);
-                        break;
-                    case 0x13:
-                        opIFN(opB, opA);
-                        break;
-                    case 0x14:
-                        opIFG(opB, opA);
-                        break;
-                    case 0x15:
-                        opIFA(opB, opA);
-                        break;
-                    case 0x16:
-                        opIFL(opB, opA);
-                        break;
-                    case 0x17:
-                        opIFU(opB, opA);
-                        break;
-                    case 0x1a:
-                        opADX(opB, opA);
-                        break;
-                    case 0x1b:
-                        opSBX(opB, opA);
-                        break;
-                    case 0x1e:
-                        opSTI(opB, opA);
-                        break;
-                    case 0x1f:
-                        opSTD(opB, opA);
-                        break;
+                    _state = ProcessorState.executeInst;
                 }
+                else
+                {
+                    _CycleDebt = operandCycles(Tick_b);
+                    _state = ProcessorState.readOpB;
+                }
+                if(_CycleDebt > 0) return;
+            }
+            if(_state == ProcessorState.readOpB)
+            {
+                Tick_opB = parseOperand(Tick_b);
+                _state = ProcessorState.executeInst;
+                _CycleDebt = opcodeCycles(Tick_a, Tick_opcode);
+                if(_CycleDebt > 0) return;
+            }
+            if(_state == ProcessorState.executeInst)
+            {
+                if (Tick_opcode == 0) // Non-basic opcodes
+                {
+                    switch (Tick_b)
+                    {
+                        case 0x01:
+                            opJSR(Tick_opA);
+                            break;
+                        case 0x08:
+                            opINT(Tick_opA);
+                            break;
+                        case 0x09:
+                            opIAG(Tick_opA);
+                            break;
+                        case 0x0a:
+                            opIAS(Tick_opA);
+                            break;
+                        case 0x0b:
+                            opRFI(Tick_opA);
+                            break;
+                        case 0x0c:
+                            opIAQ(Tick_opA);
+                            break;
+                        //case 0x10:
+                        //    opHWN(Tick_opA);
+                        //    break;
+                        //case 0x11:
+                        //    opHWQ(Tick_opA);
+                        //    break;
+                        //case 0x12:
+                        //    opHWI(Tick_opA);
+                        //    break;
+                    }
+                }
+                else // Basic opcodes
+                {
+                    switch (Tick_opcode)
+                    {
+                        case 0x01:
+                            opSET(Tick_opB, Tick_opA);
+                            break;
+                        case 0x02:
+                            opADD(Tick_opB, Tick_opA);
+                            break;
+                        case 0x03:
+                            opSUB(Tick_opB, Tick_opA);
+                            break;
+                        case 0x04:
+                            opMUL(Tick_opB, Tick_opA);
+                            break;
+                        case 0x05:
+                            opMLI(Tick_opB, Tick_opA);
+                            break;
+                        case 0x06:
+                            opDIV(Tick_opB, Tick_opA);
+                            break;
+                        case 0x07:
+                            opDVI(Tick_opB, Tick_opA);
+                            break;
+                        case 0x08:
+                            opMOD(Tick_opB, Tick_opA);
+                            break;
+                        case 0x09:
+                            opMDI(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0a:
+                            opAND(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0b:
+                            opBOR(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0c:
+                            opXOR(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0d:
+                            opSHR(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0e:
+                            opASR(Tick_opB, Tick_opA);
+                            break;
+                        case 0x0f:
+                            opSHL(Tick_opB, Tick_opA);
+                            break;
+                        case 0x10:
+                            opIFB(Tick_opB, Tick_opA);
+                            break;
+                        case 0x11:
+                            opIFC(Tick_opB, Tick_opA);
+                            break;
+                        case 0x12:
+                            opIFE(Tick_opB, Tick_opA);
+                            break;
+                        case 0x13:
+                            opIFN(Tick_opB, Tick_opA);
+                            break;
+                        case 0x14:
+                            opIFG(Tick_opB, Tick_opA);
+                            break;
+                        case 0x15:
+                            opIFA(Tick_opB, Tick_opA);
+                            break;
+                        case 0x16:
+                            opIFL(Tick_opB, Tick_opA);
+                            break;
+                        case 0x17:
+                            opIFU(Tick_opB, Tick_opA);
+                            break;
+                        case 0x1a:
+                            opADX(Tick_opB, Tick_opA);
+                            break;
+                        case 0x1b:
+                            opSBX(Tick_opB, Tick_opA);
+                            break;
+                        case 0x1e:
+                            opSTI(Tick_opB, Tick_opA);
+                            break;
+                        case 0x1f:
+                            opSTD(Tick_opB, Tick_opA);
+                            break;
+                    }
+                }
+                _state = ProcessorState.newInst;
+                return;
             }
         }
 
@@ -320,34 +365,126 @@ namespace e16
 
         private ushort nextWord() { return _RAM[_PC++]; }
 
+        private int operandCycles(ushort value)
+        {
+            if (value > 0x09 && value < 0x18) //[next word + register]
+                return 1;
+            switch (value)
+            {
+                case 0x1a: //PICK n
+                    return 1;
+                case 0x1e: //[next word]
+                    return 1;
+                case 0x1f: //next word (literal)
+                    return 1;
+            }
+            return 0;
+        }
+
+        private static int[] _basicCycleCost = {
+                                                   0,
+                                                   1,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   3,
+                                                   3,
+                                                   3,
+                                                   3,
+                                                   1,
+                                                   1,
+                                                   1,
+                                                   1,
+                                                   1,
+                                                   1,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   2,
+                                                   0,
+                                                   0,
+                                                   3,
+                                                   3,
+                                                   0,
+                                                   0,
+                                                   2,
+                                                   2 };
+        private static int[] _specialCycleCost = {
+                                                   0,
+                                                   3,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   4,
+                                                   1,
+                                                   1,
+                                                   3,
+                                                   2,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   2,
+                                                   4,
+                                                   4,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0 };
+
+
+        private int opcodeCycles(ushort special, ushort opcode)
+        {
+            if (opcode == 0)
+                return _specialCycleCost[special];
+            else
+                return _basicCycleCost[opcode];
+        }
+
         private operand parseOperand(ushort value)
         {
             if (value < 0x08) //Register
-                return new operand(operand.REG,value);
+                return new operand(operand.REG, value);
             if (value < 0x10) //[Register]
                 return new operand(operand.RAM, _Register[value - 0x08]);
             if (value < 0x18) //[next word + register]
-                return new operand(operand.RAM,(ushort)(_Register[value - 0x10] + nextWord()));
+                return new operand(operand.RAM, (ushort)(_Register[value - 0x10] + nextWord()));
             if (value > 0x1f) // literal 0x00 - 0x1f
-                return new operand(operand.LIT,(ushort)(value - 0x21));
+                return new operand(operand.LIT, (ushort)(value - 0x21));
             switch (value)
             {
                 case 0x18: //PUSH
-                    return new operand(operand.STK,0);
+                    return new operand(operand.STK, 0);
                 case 0x19: //PEEK
-                    return new operand(operand.RAM,_SP);
+                    return new operand(operand.RAM, _SP);
                 case 0x1a: //PICK n
-                    return new operand(operand.RAM,(ushort)(_SP+nextWord()));
+                    return new operand(operand.RAM, (ushort)(_SP + nextWord()));
                 case 0x1b: //SP
-                    return new operand(operand.SP,0);
+                    return new operand(operand.SP, 0);
                 case 0x1c: //PC
-                    return new operand(operand.PC,0);
+                    return new operand(operand.PC, 0);
                 case 0x1d: //EX
-                    return new operand(operand.EX,0);
+                    return new operand(operand.EX, 0);
                 case 0x1e: //[next word]
-                    return new operand(operand.RAM,nextWord());
+                    return new operand(operand.RAM, nextWord());
                 case 0x1f: //next word (literal)
-                    return new operand(operand.LIT,nextWord());
+                    return new operand(operand.LIT, nextWord());
             }
             throw new Exception("Invalid parseOperand" + value.ToString("X4"));
         }
