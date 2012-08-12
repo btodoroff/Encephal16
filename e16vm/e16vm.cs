@@ -7,6 +7,18 @@ using System.IO;
 
 namespace e16
 {
+    public interface Ie16Hardware
+    {
+        uint HardwareID { get; set; }
+        uint Manufacturer { get; set; }
+        ushort HardwareVersion { get; set; }
+        e16vm dcpu16 { get; set; }
+        void Interrupt(ushort a);
+        void Tick();
+        void Reset();
+        
+    }
+
     public class operand
     {
         public operand() : this(0,0)
@@ -52,6 +64,7 @@ namespace e16
         private bool _IntEnabled;
         private System.Collections.Generic.Queue<ushort> _IntQueue;
         private int _CycleDebt;
+        private System.Collections.Generic.Dictionary<ushort, Ie16Hardware> _Hardware;
 
         public uint Cycles { get { return _Cycles; } }
 
@@ -63,6 +76,13 @@ namespace e16
             ClearMemory();
             Reset();
 
+        }
+
+        public void AttachHardware(Ie16Hardware hw, ushort address)
+        {
+            _Hardware.Add(address, hw);
+            hw.dcpu16 = this;
+            hw.Reset();
         }
 
         public string RegToString()
@@ -133,6 +153,10 @@ namespace e16
             _IntQueue.Clear();
             _state = ProcessorState.newInst;
             ClearMemory();
+            foreach (Ie16Hardware hw in _Hardware.Values)
+            {
+                hw.Reset();
+            }
         }
 
         public void ClearMemory()
@@ -163,6 +187,13 @@ namespace e16
             LoadMemory(data, startAddr);
         }
 
+        public void Tick(int cycles)
+        {
+            for (; cycles > 0; cycles--)
+            {
+                Tick();
+            }
+        }
         private enum ProcessorState { newInst, readOpA, readOpB, executeInst };
         private ProcessorState _state;
         private ushort Tick_inst;
@@ -174,6 +205,10 @@ namespace e16
         public void Tick()
         {
             _Cycles++;
+            foreach (Ie16Hardware hw in _Hardware.Values)
+            {
+                hw.Tick();
+            }
             if (--_CycleDebt == 0)
             {
                 _CycleDebt--;
@@ -242,15 +277,15 @@ namespace e16
                         case 0x0c:
                             opIAQ(Tick_opA);
                             break;
-                        //case 0x10:
-                        //    opHWN(Tick_opA);
-                        //    break;
-                        //case 0x11:
-                        //    opHWQ(Tick_opA);
-                        //    break;
-                        //case 0x12:
-                        //    opHWI(Tick_opA);
-                        //    break;
+                        case 0x10:
+                            opHWN(Tick_opA);
+                            break;
+                        case 0x11:
+                            opHWQ(Tick_opA);
+                            break;
+                        case 0x12:
+                            opHWI(Tick_opA);
+                            break;
                     }
                 }
                 else // Basic opcodes
@@ -345,7 +380,7 @@ namespace e16
             }
         }
 
-        public void skipNext()
+        public void skipNext(bool chain = true)
         {
             ushort inst = nextWord();
             ushort opcode = (ushort)(inst & (ushort)0x001fu);
@@ -359,6 +394,7 @@ namespace e16
             {
                 parseSkippedOperand(a);
                 parseSkippedOperand(b);
+                if (chain && opcode > 0x0f && opcode < 0x18) skipNext(false);
             }
 
         }
@@ -857,6 +893,36 @@ namespace e16
         {
             ushort _a = readValue(a);
             _IntEnabled = (_a == 0);
+        }
+
+        private void opHWN(operand a)
+        {
+            ushort _a = readValue(a);
+            writeValue(a, (ushort) _Hardware.Count);
+        }
+
+        private void opHWQ(operand a)
+        {
+            ushort _a = readValue(a);
+            if(_Hardware.ContainsKey(_a))
+            {
+                Ie16Hardware hw = _Hardware[_a];
+                _Register[_A] = (ushort)(hw.HardwareID&0x00ff);
+                _Register[_B] = (ushort)((hw.HardwareID>>16)&0x00ff);
+                _Register[_C] = hw.HardwareVersion;
+                _Register[_X] = (ushort)(hw.Manufacturer&0x00ff);
+                _Register[_Y] = (ushort)((hw.Manufacturer>>16)&0x00ff);
+            }
+        }
+
+        private void opHWI(operand a)
+        {
+            ushort _a = readValue(a);
+            if (_Hardware.ContainsKey(_a))
+            {
+                Ie16Hardware hw = _Hardware[_a];
+                hw.Interrupt(_a);
+            }
         }
 
         private void stackPUSH(ushort value)
