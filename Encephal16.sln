@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "e16Test", "e16Test\e16Test.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "e16Controls", "e16Controls\e16Controls.csproj", "{E27E12CF-4367-4BBD-9220-D6725AC17C73}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "e16Hardware", "e16Hardware\e16Hardware.csproj", "{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,16 +59,6 @@ Global
 		{E27E12CF-4367-4BBD-9220-D6725AC17C73}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{E27E12CF-4367-4BBD-9220-D6725AC17C73}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{E27E12CF-4367-4BBD-9220-D6725AC17C73}.Release|x86.ActiveCfg = Release|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
