@@ -73,6 +73,7 @@ namespace e16
             _RAM = new ushort[RAMSize];
             _Register = new ushort[RegisterCount];
             _IntQueue = new Queue<ushort>();
+            _Hardware = new Dictionary<ushort, Ie16Hardware>();
             ClearMemory();
             Reset();
 
