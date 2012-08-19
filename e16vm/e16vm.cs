@@ -16,6 +16,7 @@ namespace e16
         void Interrupt(ushort a);
         void Tick();
         void Reset();
+        
     }
 
     public class operand
