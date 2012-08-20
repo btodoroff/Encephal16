@@ -23,32 +23,75 @@ namespace e16.Hardware
         public uint Manufacturer { get; set; }
         public ushort HardwareVersion { get; set; }
         public e16vm dcpu16 { get; set; }
-        public void Interrupt(ushort a) { }
-        public void Tick() { }
         public Color[,] ScreenImage { get; set; }
         public Color[] ScreenPalette { get; set; }
         private ushort _CharMemAddr;
         private ushort _PaletteMemAddr;
         private ushort _FontMemAddr;
+        private bool _BlinkState;
+        private int _BlinkCounts;
+        public Color BorderColor { get { return GetPaletteColor(_BorderColor); } }
+        private ushort _BorderColor;
+        private static readonly int _BlinkIntervalTicks = 100000;
+        public const int XChars = 32;
+        public const int YChars = 12;
+
 
         public LEM1802()
         {
-            ScreenImage = new Color[128, 96];
+            ScreenImage = new Color[XChars * 4, YChars * 8];
             ScreenPalette = new Color[_DefaultPalette.Length];
+            Reset();
         }
         public void Reset()
         {
             _CharMemAddr = 0;
             _PaletteMemAddr = 0;
             _FontMemAddr = 0;
+            _BlinkState = false;
+            _BlinkCounts = _BlinkIntervalTicks;
             ClearScreenImage();
             ResetPalette();
+            //Test code
+            byte[] charBuf = GetChar(65);
+            Color foreColor = GetPaletteColor(0);
+            Color backColor = GetPaletteColor(15);
+            PlotChar(0, 0, charBuf, foreColor, backColor);
         }
+        public void Interrupt(ushort a) 
+        {
+            switch((Interupts)a)
+            {
+                case Interupts.MEM_MAP_SCREEN:
+                    _CharMemAddr = dcpu16.B;
+                    return;
+                case Interupts.MEM_MAP_FONT:
+                    _FontMemAddr = dcpu16.B;
+                    return;
+                case Interupts.MEM_MAP_PALETTE:
+                    _PaletteMemAddr = dcpu16.B;
+                    return;
+                case Interupts.SET_BORDER_COLOR:
+                    _BorderColor = (ushort)(dcpu16.B&0x000f);
+                    return;
+                case Interupts.MEM_DUMP_FONT:
+                    dcpu16.LoadMemory(_DefaultFont,dcpu16.B);
+                    return;
+                case Interupts.MEM_DUMP_PALETTE:
+                    dcpu16.LoadMemory(_DefaultFont,dcpu16.B);
+                    return;
+            }
+        }
+
         public void ClearScreenImage()
+        {
+            ClearScreenImage(Color.FromArgb(0, 0, 0));
+        }
+        public void ClearScreenImage(Color toColor)
         {
             for (int i = 0; i < ScreenImage.GetLength(0); i++)
                 for (int j = 0; j < ScreenImage.GetLength(1); j++)
-                    ScreenImage[i, j] = Color.FromArgb(0, 0, 0);
+                    ScreenImage[i, j] = toColor;
         }
         public void ResetPalette()
         {
@@ -56,7 +99,85 @@ namespace e16.Hardware
             for (int i = 0; i < ScreenPalette.Length; i++)
                 ScreenPalette[i] = Color.FromArgb((int)_DefaultPalette[i]);
         }
-        private uint[] _DefaultPalette = 
+        public void Tick()
+        {
+            if(_BlinkCounts-- < 1)
+            {
+                _BlinkCounts = _BlinkIntervalTicks;
+                _BlinkState = !_BlinkState;
+            }
+            DrawScreen();
+        }
+        public void DrawScreen()
+        {
+            byte [] charBuf;
+            ushort charData;
+            int charCode;
+            Color foreColor;
+            Color backColor;
+            if (_CharMemAddr == 0) return;
+            for (int curX = 0; curX < XChars; curX++)
+            {
+                for (int curY = 0; curY < YChars; curY++)
+                {
+                    charData = dcpu16.RAM((uint)(_CharMemAddr + curX + (curY * YChars)));
+                    charCode = charData & 0x007f;
+                    charBuf = GetChar(charCode);
+                    foreColor = GetPaletteColor((charData & 0xf000) >> 12);
+                    backColor = GetPaletteColor((charData & 0x0f00) >> 8);
+                    if (_BlinkState || ((charData&0x0080) == 0))
+                        PlotChar(curX, curY, charBuf, foreColor, backColor);
+                    else
+                        PlotChar(curX, curY, charBuf, backColor, foreColor);
+                }
+            }
+        }
+        public byte[] GetChar(int charCode)
+        {
+            byte[] output = new byte[4];
+            ushort[] data = new ushort[2];
+            if (_FontMemAddr == 0)
+            {
+                data[0] = _DefaultFont[charCode * 2];
+                data[1] = _DefaultFont[charCode * 2 + 1];
+            }
+            else
+            {
+                data[0] = dcpu16.RAM((uint)(_FontMemAddr + (charCode * 2)));
+                data[1] = dcpu16.RAM((uint)(_FontMemAddr + 1 +(charCode * 2)));
+            }
+            output[0] = (byte)((data[0]&0xff00)>>8);
+            output[1] = (byte)(data[0] & 0x00ff);
+            output[2] = (byte)((data[1] & 0xff00) >> 8);
+            output[3] = (byte)(data[1] & 0x00ff);
+            return output;
+        }
+        public Color GetPaletteColor(int colorIndex)
+        {
+            uint colorData;
+            if (_PaletteMemAddr == 0)
+                colorData = _DefaultPalette[colorIndex];
+            else
+                colorData = dcpu16.RAM((uint)(_PaletteMemAddr + colorIndex));
+            return Color.FromArgb((int)(colorData|0xf000u));
+        }
+        public void PlotChar(int x, int y, byte[] charData, Color foreground, Color background)
+        {
+            Color pixelColor;
+            for(int charX = 0; charX < 4; charX ++)
+            {
+                for (int charY = 0; charY < 8; charY++)
+                {
+
+                    if ((charData[charX] & (0x01 << charY)) != 0)
+                        pixelColor = foreground;
+                    else
+                        pixelColor = background;
+                    ScreenImage[(x * 4) + charX, ScreenImage.GetLength(1) - 1 - ((y * 8) + charY)] = pixelColor;
+                }
+            }
+        }
+        private static readonly uint[] _DefaultPalette = 
         { 
             0xff000000,
             0xff0000aa,
@@ -75,7 +196,7 @@ namespace e16.Hardware
             0xffffff55,
             0xffffffff
         };
-        private ushort[] _DefaultFont = 
+        private static readonly ushort[] _DefaultFont = 
         {
             0xB79E,
             0x388E,

@@ -94,6 +94,10 @@
     <None Include="TestProgram.dasm16" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\e16Hardware\e16Hardware.csproj">
+      <Project>{9BD5E6DA-0500-427D-A6D9-8494A0CD7673}</Project>
+      <Name>e16Hardware</Name>
+    </ProjectReference>
     <ProjectReference Include="..\e16vm\e16vm.csproj">
       <Project>{63268624-2EBF-4BE1-855D-EC3A37CDBD7F}</Project>
       <Name>e16vm</Name>
