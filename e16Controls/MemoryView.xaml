@@ -1,4 +1,9 @@
-﻿<UserControl x:Class="e16.Controls.MemoryView"
+﻿<!--
+    Copyright 2012 Brian Todoroff
+    Encephal16 by Brian Todoroff is licensed under a Creative Commons Attribution-ShareAlike 3.0 Unported License
+    Based on a work at https://github.com/btodoroff/Encephal16.
+-->
+    <UserControl x:Class="e16.Controls.MemoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 

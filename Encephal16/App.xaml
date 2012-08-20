@@ -1,4 +1,9 @@
-﻿<Application x:Class="Encephal16.App"
+﻿<!--
+    Copyright 2012 Brian Todoroff
+    Encephal16 by Brian Todoroff is licensed under a Creative Commons Attribution-ShareAlike 3.0 Unported License
+    Based on a work at https://github.com/btodoroff/Encephal16.
+-->
+<Application x:Class="Encephal16.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
