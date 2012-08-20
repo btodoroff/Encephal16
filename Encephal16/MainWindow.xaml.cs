@@ -38,6 +38,7 @@ namespace Encephal16
             WatchView1.dut = dut;
             WatchView2.dut = dut;
             lEM1802View1.LEM = lem;
+            dut.AttachHardware(lem, 0);
             UpdateViews();
         }
         

@@ -1,0 +1,64 @@
+SET I, 0
+HWN J
+:hw_loop
+HWQ I
+IFE A, 0xf615
+  SET display, I
+IFE A, 0x7406
+  SET keyboard, I
+IFE A, 0xb402
+  SET clock, I
+IFE A, 0x4cae
+  SET drive, I
+ADD I, 1
+IFE I, J
+  SET pc, done_loop
+SET pc, hw_loop
+ 
+:done_loop ;This gets control when the hardware has been detected
+SET b, [VRAM]
+JSR mem_map_display ; Set the video ram just to make sure. =]
+SET a, helloworld ; Print the hello world text
+JSR printf ; Print
+SET a, linetest ; Print the line test text
+JSR printf ; Print
+ 
+:loop
+SET pc, loop ; Loop to keep bad things from happening
+ 
+:mem_map_display
+SET a, 0
+HWI [display]
+SET pc, pop
+:printf
+; B is where we will begin to draw the text
+SET b, [VRAM] ; Set the b register the wherever our framebuffer is (Usally 0x8000)
+ADD b, [character_offset] ; Add the character offset to b so we print in the correct place
+:printf_loop
+SET [b], [a] ; Copy the character to the framebuffer
+BOR [b], 0x7000 ; Set the color of B
+ADD b, 1 ; Self explanitory
+ADD a, 1 ; ^
+IFE [a], 0x0000 ; If we are at the end of the string (They should end with 0x0000)
+ADD [character_offset], 32 ; Add 32 to the character offset
+IFE [a], 0x0000
+SET pc, pop ; Return to the main code
+SET pc, printf_loop
+ 
+:character_offset
+DAT 0
+:VRAM
+DAT 0x8000
+:display
+DAT 0xFFFF
+:keyboard
+DAT 0xFFFF
+:clock
+DAT 0xFFFF
+:drive
+DAT 0xFFFF
+:helloworld
+DAT ";Hello, World!"
+:linetest
+DAT ";This should appear on the next line"
+ 

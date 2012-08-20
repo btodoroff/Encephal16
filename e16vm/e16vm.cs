@@ -13,9 +13,9 @@ namespace e16
 {
     public interface Ie16Hardware
     {
-        uint HardwareID { get; set; }
-        uint Manufacturer { get; set; }
-        ushort HardwareVersion { get; set; }
+        uint HardwareID { get;}
+        uint Manufacturer { get;}
+        ushort HardwareVersion { get;}
         e16vm dcpu16 { get; set; }
         void Interrupt(ushort a);
         void Tick();
@@ -912,11 +912,11 @@ namespace e16
             if(_Hardware.ContainsKey(_a))
             {
                 Ie16Hardware hw = _Hardware[_a];
-                _Register[_A] = (ushort)(hw.HardwareID&0x00ff);
-                _Register[_B] = (ushort)((hw.HardwareID>>16)&0x00ff);
+                _Register[_A] = (ushort)(hw.HardwareID&0x0000ffff);
+                _Register[_B] = (ushort)((hw.HardwareID>>16)&0x0000ffff);
                 _Register[_C] = hw.HardwareVersion;
-                _Register[_X] = (ushort)(hw.Manufacturer&0x00ff);
-                _Register[_Y] = (ushort)((hw.Manufacturer>>16)&0x00ff);
+                _Register[_X] = (ushort)(hw.Manufacturer&0x0000ffff);
+                _Register[_Y] = (ushort)((hw.Manufacturer>>16)&0x0000ffff);
             }
         }
 

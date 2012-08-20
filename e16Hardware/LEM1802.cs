@@ -19,9 +19,9 @@ namespace e16.Hardware
             MEM_DUMP_PALETTE = 5
         };
 
-        public uint HardwareID { get; set; }
-        public uint Manufacturer { get; set; }
-        public ushort HardwareVersion { get; set; }
+        public uint HardwareID { get { return 0x7349f615u; } }
+        public uint Manufacturer { get { return 0x1c6c8b36; } }
+        public ushort HardwareVersion { get { return 0x1802; } }
         public e16vm dcpu16 { get; set; }
         public Color[,] ScreenImage { get; set; }
         public Color[] ScreenPalette { get; set; }
@@ -159,7 +159,7 @@ namespace e16.Hardware
                 colorData = _DefaultPalette[colorIndex];
             else
                 colorData = dcpu16.RAM((uint)(_PaletteMemAddr + colorIndex));
-            return Color.FromArgb((int)(colorData|0xf000u));
+            return Color.FromArgb((int)(colorData|0xff000000u));
         }
         public void PlotChar(int x, int y, byte[] charData, Color foreground, Color background)
         {
