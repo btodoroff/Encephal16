@@ -116,11 +116,11 @@ namespace e16.Hardware
             Color foreColor;
             Color backColor;
             if (_CharMemAddr == 0) return;
-            for (int curX = 0; curX < XChars; curX++)
+            for (int curY = 0; curY < YChars; curY++)
             {
-                for (int curY = 0; curY < YChars; curY++)
-                {
-                    charData = dcpu16.RAM((uint)(_CharMemAddr + curX + (curY * YChars)));
+             for (int curX = 0; curX < XChars; curX++)
+               {
+                    charData = dcpu16.RAM((uint)(_CharMemAddr + curX + (curY * XChars)));
                     charCode = charData & 0x007f;
                     charBuf = GetChar(charCode);
                     foreColor = GetPaletteColor((charData & 0xf000) >> 12);

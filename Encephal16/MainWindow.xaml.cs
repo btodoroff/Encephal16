@@ -95,5 +95,11 @@ namespace Encephal16
                 tbImageFile.Text = dlg.FileName;
             }
         }
+
+        private void btnStep_Click(object sender, RoutedEventArgs e)
+        {
+            dut.Step();
+            UpdateViews();
+        }
     }
 }

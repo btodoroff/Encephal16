@@ -191,7 +191,14 @@ namespace e16
             }
             LoadMemory(data, startAddr);
         }
-
+        public void Step(int instructions=1)
+        {
+            for (; instructions > 0; )
+            {
+                Tick();
+                if (_state == ProcessorState.newInst) instructions--;
+            }
+        }
         public void Tick(int cycles)
         {
             for (; cycles > 0; cycles--)
@@ -601,7 +608,10 @@ namespace e16
                 return;
             }
             if (op._type == operand.LIT)
+            {
+                _RAM[op._value] = data;
                 return;
+            }
             if (op._type == operand.STK)
             {
                 stackPUSH(data);
