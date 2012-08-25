@@ -23,7 +23,14 @@ namespace e16.Hardware
         public uint Manufacturer { get { return 0x1c6c8b36; } }
         public ushort HardwareVersion { get { return 0x1802; } }
         public e16vm dcpu16 { get; set; }
-        public Color[,] ScreenImage { get; set; }
+        private Color[,] _ScreenImage;
+        public bool ScreenDirty { get; set; }
+        public Color[,] ScreenImage { 
+            get { 
+                //if(ScreenDirty) DrawScreen(); 
+                return _ScreenImage; 
+            } 
+        }
         public Color[] ScreenPalette { get; set; }
         private ushort _CharMemAddr;
         private ushort _PaletteMemAddr;
@@ -39,7 +46,8 @@ namespace e16.Hardware
 
         public LEM1802()
         {
-            ScreenImage = new Color[XChars * 4, YChars * 8];
+            _ScreenImage = new Color[XChars * 4, YChars * 8];
+            _PreviousCharData = new ushort[XChars, YChars]; //TODO: Need to capture the screen char data at each tick and only draw if something changed.
             ScreenPalette = new Color[_DefaultPalette.Length];
             Reset();
         }
@@ -52,6 +60,7 @@ namespace e16.Hardware
             _BlinkCounts = _BlinkIntervalTicks;
             ClearScreenImage();
             ResetPalette();
+            ScreenDirty = false;
             //Test code
             byte[] charBuf = GetChar(65);
             Color foreColor = GetPaletteColor(0);
@@ -89,15 +98,17 @@ namespace e16.Hardware
         }
         public void ClearScreenImage(Color toColor)
         {
-            for (int i = 0; i < ScreenImage.GetLength(0); i++)
-                for (int j = 0; j < ScreenImage.GetLength(1); j++)
-                    ScreenImage[i, j] = toColor;
+            for (int i = 0; i < _ScreenImage.GetLength(0); i++)
+                for (int j = 0; j < _ScreenImage.GetLength(1); j++)
+                    _ScreenImage[i, j] = toColor;
+            ScreenDirty = false;
         }
         public void ResetPalette()
         {
             ScreenPalette = new Color[_DefaultPalette.Length];
             for (int i = 0; i < ScreenPalette.Length; i++)
                 ScreenPalette[i] = Color.FromArgb((int)_DefaultPalette[i]);
+            ScreenDirty = true;
         }
         public void Tick()
         {
@@ -108,8 +119,10 @@ namespace e16.Hardware
             }
             DrawScreen();
         }
+        private ushort[,] _PreviousCharData;
         public void DrawScreen()
         {
+            ScreenDirty = false;
             byte [] charBuf;
             ushort charData;
             int charCode;
@@ -131,6 +144,7 @@ namespace e16.Hardware
                         PlotChar(curX, curY, charBuf, backColor, foreColor);
                 }
             }
+
         }
         public byte[] GetChar(int charCode)
         {
@@ -173,9 +187,10 @@ namespace e16.Hardware
                         pixelColor = foreground;
                     else
                         pixelColor = background;
-                    ScreenImage[(x * 4) + charX, ScreenImage.GetLength(1) - 1 - ((y * 8) + charY)] = pixelColor;
+                    _ScreenImage[(x * 4) + charX, _ScreenImage.GetLength(1) - 1 - ((y * 8) + charY)] = pixelColor;
                 }
             }
+            ScreenDirty = true;
         }
         private static readonly uint[] _DefaultPalette = 
         { 

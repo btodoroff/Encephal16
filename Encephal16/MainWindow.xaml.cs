@@ -73,8 +73,18 @@ namespace Encephal16
 
         private void btnTick_Click(object sender, RoutedEventArgs e)
         {
-            dut.Tick();
-            UpdateViews();
+            try
+            {
+                for (int i = int.Parse(txtTickCount.Text); i > 0; i--)
+                {
+                    dut.Tick();
+                    UpdateViews();
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         private void tbImageFile_MouseDoubleClick(object sender, MouseButtonEventArgs e)

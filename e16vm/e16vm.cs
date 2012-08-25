@@ -68,16 +68,20 @@ namespace e16
         private bool _IntEnabled;
         private System.Collections.Generic.Queue<ushort> _IntQueue;
         private int _CycleDebt;
-        private System.Collections.Generic.Dictionary<ushort, Ie16Hardware> _Hardware;
+        private System.Collections.Generic.List<Ie16Hardware> _Hardware;
+        
 
         public uint Cycles { get { return _Cycles; } }
-
+        public uint ClockRatekHz { get; set; }
+        public double ClockPeriodSec { get { return (double).001 / (double)ClockRatekHz; } }
+        public double ElapsedTimeSec { get { return (double)Cycles * ClockPeriodSec; } }
         public e16vm()
         {
+            ClockRatekHz = 100000; // 100 MHz
             _RAM = new ushort[RAMSize];
             _Register = new ushort[RegisterCount];
             _IntQueue = new Queue<ushort>();
-            _Hardware = new Dictionary<ushort, Ie16Hardware>();
+            _Hardware = new List<Ie16Hardware>();
             ClearMemory();
             Reset();
 
@@ -85,7 +89,7 @@ namespace e16
 
         public void AttachHardware(Ie16Hardware hw, ushort address)
         {
-            _Hardware.Add(address, hw);
+            _Hardware.Add(hw);
             hw.dcpu16 = this;
             hw.Reset();
         }
@@ -158,7 +162,7 @@ namespace e16
             _IntQueue.Clear();
             _state = ProcessorState.newInst;
             ClearMemory();
-            foreach (Ie16Hardware hw in _Hardware.Values)
+            foreach (Ie16Hardware hw in _Hardware)
             {
                 hw.Reset();
             }
@@ -217,7 +221,7 @@ namespace e16
         public void Tick()
         {
             _Cycles++;
-            foreach (Ie16Hardware hw in _Hardware.Values)
+            foreach (Ie16Hardware hw in _Hardware)
             {
                 hw.Tick();
             }
@@ -919,7 +923,7 @@ namespace e16
         private void opHWQ(operand a)
         {
             ushort _a = readValue(a);
-            if(_Hardware.ContainsKey(_a))
+            if(_Hardware.Count>_a)
             {
                 Ie16Hardware hw = _Hardware[_a];
                 _Register[_A] = (ushort)(hw.HardwareID&0x0000ffff);
@@ -933,7 +937,7 @@ namespace e16
         private void opHWI(operand a)
         {
             ushort _a = readValue(a);
-            if (_Hardware.ContainsKey(_a))
+            if (_Hardware.Count > _a)
             {
                 Ie16Hardware hw = _Hardware[_a];
                 hw.Interrupt(_a);

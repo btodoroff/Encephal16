@@ -51,7 +51,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="lem1802.txt" />
+    <None Include="Specifications\clock.txt" />
+    <None Include="Specifications\HIT_HMD2043.txt" />
+    <None Include="Specifications\keyboard.txt" />
+    <None Include="Specifications\lem1802.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

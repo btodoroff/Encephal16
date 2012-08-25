@@ -19,5 +19,6 @@
         <TextBox Height="19" HorizontalAlignment="Left" Margin="370,77,0,0" Name="tbImageFile" VerticalAlignment="Top" Width="253" MouseDoubleClick="tbImageFile_MouseDoubleClick" Text="C:\Users\btodoroff\Documents\visual studio 2010\Projects\Encephal16\test.dcpu16" />
         <my1:LEM1802View HorizontalAlignment="Left" Margin="416,309,0,0" Name="lEM1802View1" VerticalAlignment="Top" Height="192" Width="256" />
         <Button Content="Step" Height="23" HorizontalAlignment="Right" Margin="0,164,12,0" Name="btnStep" VerticalAlignment="Top" Width="75" Click="btnStep_Click" />
+        <TextBox Height="23" HorizontalAlignment="Left" Margin="538,135,0,0" Name="txtTickCount" VerticalAlignment="Top" Width="85" Text="1" />
     </Grid>
 </Window>
