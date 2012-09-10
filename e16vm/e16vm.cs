@@ -77,14 +77,13 @@ namespace e16
         public double ElapsedTimeSec { get { return (double)Cycles * ClockPeriodSec; } }
         public e16vm()
         {
-            ClockRatekHz = 100000; // 100 MHz
+            ClockRatekHz = 100; // 100 kHz
             _RAM = new ushort[RAMSize];
             _Register = new ushort[RegisterCount];
             _IntQueue = new Queue<ushort>();
             _Hardware = new List<Ie16Hardware>();
             ClearMemory();
             Reset();
-
         }
 
         public void AttachHardware(Ie16Hardware hw, ushort address)
@@ -205,10 +204,23 @@ namespace e16
         }
         public void Tick(int cycles)
         {
-            for (; cycles > 0; cycles--)
+            for (int i = 0; i < cycles; i++)
             {
                 Tick();
             }
+        }
+        public TimeSpan TickRealtime(int cycles)
+        {
+            long targetTicks = 0;
+            DateTime start = DateTime.Now;
+            for (int i = 0; i < cycles; i++)
+            {
+                targetTicks += 100;
+                Tick();
+                while ((DateTime.Now - start).Ticks < targetTicks) ;
+            }
+            TimeSpan ts = DateTime.Now - start;
+            return ts;
         }
         private enum ProcessorState { newInst, readOpA, readOpB, executeInst };
         private ProcessorState _state;

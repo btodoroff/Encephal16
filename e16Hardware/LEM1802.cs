@@ -37,9 +37,11 @@ namespace e16.Hardware
         private ushort _FontMemAddr;
         private bool _BlinkState;
         private int _BlinkCounts;
+        private int _RefreshCounts;
+        private int _RefreshIntervalTicks = 1667; // 100000Hz / 60 fps = 1667 ticks / frame
         public Color BorderColor { get { return GetPaletteColor(_BorderColor); } }
         private ushort _BorderColor;
-        private static readonly int _BlinkIntervalTicks = 100000;
+        private int _BlinkIntervalTicks = 100000; // 100000Hz / 1 invert/sec = 100000 ticks / frame
         public const int XChars = 32;
         public const int YChars = 12;
 
@@ -47,8 +49,8 @@ namespace e16.Hardware
         public LEM1802()
         {
             _ScreenImage = new Color[XChars * 4, YChars * 8];
-            _PreviousCharData = new ushort[XChars, YChars]; //TODO: Need to capture the screen char data at each tick and only draw if something changed.
             ScreenPalette = new Color[_DefaultPalette.Length];
+            _PreviousCharData = null;
             Reset();
         }
         public void Reset()
@@ -60,7 +62,7 @@ namespace e16.Hardware
             _BlinkCounts = _BlinkIntervalTicks;
             ClearScreenImage();
             ResetPalette();
-            ScreenDirty = false;
+            ScreenDirty = true;
             //Test code
             byte[] charBuf = GetChar(65);
             Color foreColor = GetPaletteColor(0);
@@ -73,15 +75,20 @@ namespace e16.Hardware
             {
                 case Interupts.MEM_MAP_SCREEN:
                     _CharMemAddr = dcpu16.B;
+                    ScreenDirty = true;
+                    _PreviousCharData = new ushort[XChars, YChars]; //TODO: Need to capture the screen char data at each tick and only draw if something changed.
                     return;
                 case Interupts.MEM_MAP_FONT:
                     _FontMemAddr = dcpu16.B;
+                    ScreenDirty = true;
                     return;
                 case Interupts.MEM_MAP_PALETTE:
                     _PaletteMemAddr = dcpu16.B;
+                    ScreenDirty = true;
                     return;
                 case Interupts.SET_BORDER_COLOR:
                     _BorderColor = (ushort)(dcpu16.B&0x000f);
+                    ScreenDirty = true;
                     return;
                 case Interupts.MEM_DUMP_FONT:
                     dcpu16.LoadMemory(_DefaultFont,dcpu16.B);
@@ -117,13 +124,16 @@ namespace e16.Hardware
                 _BlinkCounts = _BlinkIntervalTicks;
                 _BlinkState = !_BlinkState;
             }
-            DrawScreen();
+            if (_RefreshCounts-- < 1) // Only refresh the screen occasionally to avoid overhead.
+            {
+                _RefreshCounts = _RefreshIntervalTicks;
+                DrawScreen();
+            }
         }
         private ushort[,] _PreviousCharData;
         public void DrawScreen()
         {
-            ScreenDirty = false;
-            byte [] charBuf;
+            byte[] charBuf;
             ushort charData;
             int charCode;
             Color foreColor;
@@ -131,20 +141,24 @@ namespace e16.Hardware
             if (_CharMemAddr == 0) return;
             for (int curY = 0; curY < YChars; curY++)
             {
-             for (int curX = 0; curX < XChars; curX++)
-               {
+                for (int curX = 0; curX < XChars; curX++)
+                {
                     charData = dcpu16.RAM((uint)(_CharMemAddr + curX + (curY * XChars)));
-                    charCode = charData & 0x007f;
-                    charBuf = GetChar(charCode);
-                    foreColor = GetPaletteColor((charData & 0xf000) >> 12);
-                    backColor = GetPaletteColor((charData & 0x0f00) >> 8);
-                    if (_BlinkState || ((charData&0x0080) == 0))
-                        PlotChar(curX, curY, charBuf, foreColor, backColor);
-                    else
-                        PlotChar(curX, curY, charBuf, backColor, foreColor);
+                    if(_PreviousCharData[curX,curY] != charData)
+                    {
+                        _PreviousCharData[curX, curY] = charData;
+                        ScreenDirty = true;
+                        charCode = charData & 0x007f;
+                        charBuf = GetChar(charCode);
+                        foreColor = GetPaletteColor((charData & 0xf000) >> 12);
+                        backColor = GetPaletteColor((charData & 0x0f00) >> 8);
+                        if (_BlinkState || ((charData & 0x0080) == 0))
+                            PlotChar(curX, curY, charBuf, foreColor, backColor);
+                        else
+                            PlotChar(curX, curY, charBuf, backColor, foreColor);
+                    }
                 }
             }
-
         }
         public byte[] GetChar(int charCode)
         {

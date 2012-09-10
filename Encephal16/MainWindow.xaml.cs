@@ -48,7 +48,6 @@ namespace Encephal16
             this.dutRegisterView.Update();
             this.WatchView1.Update();
             this.WatchView2.Update();
-            this.lEM1802View1.Update();
         }
 
         private void btnLoad_Click(object sender, RoutedEventArgs e)
@@ -75,11 +74,11 @@ namespace Encephal16
         {
             try
             {
-                for (int i = int.Parse(txtTickCount.Text); i > 0; i--)
-                {
+                if (cbRealTime.IsChecked.Value)
+                    dut.TickRealtime(int.Parse(txtTickCount.Text));
+                else
                     dut.Tick();
-                    UpdateViews();
-                }
+                UpdateViews();
             }
             catch(Exception ex)
             {
