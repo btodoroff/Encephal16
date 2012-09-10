@@ -77,7 +77,7 @@ namespace Encephal16
                 if (cbRealTime.IsChecked.Value)
                     dut.TickRealtime(int.Parse(txtTickCount.Text));
                 else
-                    dut.Tick();
+                    dut.Tick(int.Parse(txtTickCount.Text));
                 UpdateViews();
             }
             catch(Exception ex)
