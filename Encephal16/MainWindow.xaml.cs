@@ -17,6 +17,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using e16;
+using e16.Hardware;
 
 namespace Encephal16
 {
@@ -26,14 +27,18 @@ namespace Encephal16
     public partial class MainWindow : Window
     {
         e16vm dut;
+        LEM1802 lem;
         public MainWindow()
         {
             InitializeComponent();
             dut = new e16vm();
+            lem = new LEM1802();
             dutMemoryView.dut = dut;
             dutRegisterView.dut = dut;
             WatchView1.dut = dut;
             WatchView2.dut = dut;
+            lEM1802View1.LEM = lem;
+            dut.AttachHardware(lem, 0);
             UpdateViews();
         }
         
@@ -67,8 +72,18 @@ namespace Encephal16
 
         private void btnTick_Click(object sender, RoutedEventArgs e)
         {
-            dut.Tick();
-            UpdateViews();
+            try
+            {
+                if (cbRealTime.IsChecked.Value)
+                    dut.TickRealtime(int.Parse(txtTickCount.Text));
+                else
+                    dut.Tick();
+                UpdateViews();
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         private void tbImageFile_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -88,6 +103,12 @@ namespace Encephal16
                 // Open document
                 tbImageFile.Text = dlg.FileName;
             }
+        }
+
+        private void btnStep_Click(object sender, RoutedEventArgs e)
+        {
+            dut.Step();
+            UpdateViews();
         }
     }
 }
