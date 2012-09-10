@@ -67,11 +67,13 @@ namespace Encephal16
         private void btnReset_Click(object sender, RoutedEventArgs e)
         {
             dut.Reset();
+            dutRegisterView.CaptureRegisters();
             UpdateViews();
         }
 
         private void btnTick_Click(object sender, RoutedEventArgs e)
         {
+            dutRegisterView.CaptureRegisters();
             try
             {
                 if (cbRealTime.IsChecked.Value)
@@ -107,6 +109,7 @@ namespace Encephal16
 
         private void btnStep_Click(object sender, RoutedEventArgs e)
         {
+            dutRegisterView.CaptureRegisters();
             dut.Step();
             UpdateViews();
         }

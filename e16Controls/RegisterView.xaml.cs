@@ -24,6 +24,41 @@ namespace e16.Controls
     /// </summary>
     public partial class RegisterView : UserControl
     {
+        public struct dutRegisters {
+            public ushort PC;
+            public ushort SP;
+            public ushort EX;
+            public ushort IA;
+            public ushort A;
+            public ushort B;
+            public ushort C;
+            public ushort X;
+            public ushort Y;
+            public ushort Z;
+            public ushort I;
+            public ushort J;
+            public uint Cycles;
+        };
+        public dutRegisters PrevRegisters;
+        public void CaptureRegisters()
+        {
+            dutRegisters regSet = new dutRegisters();
+            regSet.PC = dut.PC;
+            regSet.SP = dut.SP;
+            regSet.EX = dut.EX;
+            regSet.IA = dut.IA;
+            regSet.A = dut.A;
+            regSet.B = dut.B;
+            regSet.C = dut.C;
+            regSet.X = dut.X;
+            regSet.Y = dut.Y;
+            regSet.Z = dut.Z;
+            regSet.I = dut.I;
+            regSet.J = dut.J;
+            regSet.Cycles = dut.Cycles;
+            PrevRegisters = regSet;
+        }
+
         public e16vm dut
         {
             set
@@ -46,12 +81,34 @@ namespace e16.Controls
         {
             if (dut == null)
             {
-                DataBlock.Text = "No controller attached.";
+                DataBlock.Document.Blocks.Clear();
+                DataBlock.AppendText("No controller attached.");
             }
             else
             {
-                DataBlock.Text = dut.RegToString() + " Cycles: " + dut.Cycles.ToString();
+                Brush same = Brushes.Black;
+                Brush change = Brushes.Red;
+                DataBlock.Document.Blocks.Clear();
+                AppendColorText("A :" + dut.A.ToString("X4") + " ", PrevRegisters.A == dut.A ? same : change);
+                AppendColorText("B :" + dut.B.ToString("X4") + " ", PrevRegisters.B == dut.B ? same : change);
+                AppendColorText("C :" + dut.C.ToString("X4") + " ", PrevRegisters.C == dut.C ? same : change);
+                AppendColorText("X :" + dut.X.ToString("X4") + " ", PrevRegisters.X == dut.X ? same : change);
+                AppendColorText("Y :" + dut.Y.ToString("X4") + " ", PrevRegisters.Y == dut.Y ? same : change);
+                AppendColorText("Z :" + dut.Z.ToString("X4") + " ", PrevRegisters.Z == dut.Z ? same : change);
+                AppendColorText("I :" + dut.I.ToString("X4") + " ", PrevRegisters.I == dut.I ? same : change);
+                AppendColorText("J :" + dut.J.ToString("X4") + "\n", PrevRegisters.J == dut.J ? same : change);
+                AppendColorText("PC:" + dut.PC.ToString("X4") + " ", PrevRegisters.PC == dut.PC ? same : change);
+                AppendColorText("SP:" + dut.SP.ToString("X4") + " ", PrevRegisters.SP == dut.SP ? same : change);
+                AppendColorText("EX:" + dut.EX.ToString("X4") + " ", PrevRegisters.EX == dut.EX ? same : change);
+                AppendColorText("IA:" + dut.IA.ToString("X4") + " ", PrevRegisters.IA == dut.IA ? same : change);
+                AppendColorText("Cycles:" + dut.Cycles.ToString(), PrevRegisters.Cycles == dut.Cycles ? same : change);
             }
+        }
+        private void AppendColorText(String text, Brush brush)
+        {
+            TextRange tr = new TextRange(DataBlock.Document.ContentEnd, DataBlock.Document.ContentEnd);
+            tr.Text = text;
+            tr.ApplyPropertyValue(TextElement.ForegroundProperty, brush); 
         }
     }
 }
